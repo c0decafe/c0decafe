@@ -1,0 +1,58 @@
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+.mcp.json
+.claude
+.nvimlog
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+
+# Node / JS
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+.nuxt/
+.turbo/
+coverage/
+.nyc_output/
+.cache/
+.wrangler/
+.mf/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Nix
+result*
+*.drv
+.devenv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/

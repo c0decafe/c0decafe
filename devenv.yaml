@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+inputs:
+  devenv:
+    url: github:cachix/devenv/2b1c4b5aa44b7d85f6a8575adf149516aaf78188
+  nixpkgs:
+    url: github:NixOS/nixpkgs/117cc7f94e8072499b0a7aa4c52084fa4e11cc9b
+  nixvim:
+    url: github:nix-community/nixvim/6094d2a4396c0ff4e94b22315cc43f55db626c32
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
+
+allowUnfree: true
+
+# If you're willing to use a package that's vulnerable
+# permittedInsecurePackages:
+#  - "openssl-1.1.1w"
+
+# If you have more than one devenv you can merge them
+#imports:
+# - ./backend

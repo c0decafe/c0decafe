@@ -1,0 +1,65 @@
+name: devenv test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - devenv.lock
+      - .github/workflows/devenv-test.yml
+
+env:
+  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+  DEVENV_FLAKE: github:cachix/devenv/v1.10#devenv
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - id: guard
+        name: Ensure Cachix token is configured
+        env:
+          TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "CACHIX_AUTH_TOKEN secret is not configured; skipping build job."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: ${{ steps.guard.outputs.enabled == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Free disk space (Ubuntu)
+        if: ${{ steps.guard.outputs.enabled == 'true' }}
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: false
+
+      - name: Install Nix
+        if: ${{ steps.guard.outputs.enabled == 'true' }}
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Setup Cachix
+        if: ${{ steps.guard.outputs.enabled == 'true' }}
+        uses: cachix/cachix-action@v15
+        with:
+          name: c0decafe # As defined in devenv.nix
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+
+      - name: Run devenv
+        if: ${{ steps.guard.outputs.enabled == 'true' }}
+        run: nix run ${{ env.DEVENV_FLAKE }} test

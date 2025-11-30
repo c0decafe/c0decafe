@@ -1,0 +1,44 @@
+{
+  "image": "ghcr.io/cachix/devenv/devcontainer:latest",
+  "overrideCommand": false,
+  "updateContentCommand": "devenv test",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
+  "runArgs": ["--privileged"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "mkhl.direnv",
+        "jnoortheen.nix-ide",
+        "nix-community.nixd-vscode",
+        "biomejs.biome",
+        "vscodevim.vim",
+        "DavidAnson.vscode-markdownlint",
+        "vivaxy.vscode-conventional-commits"
+      ],
+      "settings": {
+        "vim.enableNeovim": true
+      }
+    },
+    "codespaces": {
+      "repositories": {
+        "c0decafe/*": {
+          "permissions": "write-all"
+        }
+      }
+    }
+  },
+  "mounts": [
+    {
+      "source": "nix-store-${devcontainerId}",
+      "target": "/nix",
+      "type": "volume"
+    }
+  ],
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb"
+  }
+}
