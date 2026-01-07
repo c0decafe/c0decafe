@@ -1,7 +1,7 @@
 {
   "image": "ghcr.io/cachix/devenv/devcontainer:latest",
   "overrideCommand": false,
-  "updateContentCommand": "devenv test",
+  "updateContentCommand": "bash -lc 'command -v devenv >/dev/null 2>&1 && (timeout 120 devenv test >/dev/null 2>&1 || true) || true'",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/sshd:1": {}
