@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Launch (or create) the Codespace for this repo, wait until it's ready, then
+connect.
+
+Usage:
+  scripts/codespace [--ssh|--code] [--pause] [--new] [--display-name NAME]
+                   [--repo OWNER/REPO] [--branch BRANCH] [-- <ssh-flags>...]
+
+Examples:
+  scripts/codespace
+  scripts/codespace --code
+  scripts/codespace -- -L 8080:localhost:8080
+EOF
+}
+
+action='connect'
+connect_mode='ssh'
+resume=1
+
+display_name=''
+repo=''
+branch=''
+ssh_flags=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --pause|--stop)
+      action='pause'
+      shift
+      ;;
+    --new|--no-resume)
+      resume=0
+      shift
+      ;;
+    --resume)
+      resume=1
+      shift
+      ;;
+    --code)
+      connect_mode='code'
+      shift
+      ;;
+    --ssh)
+      connect_mode='ssh'
+      shift
+      ;;
+    --display-name)
+      display_name="${2:?}"
+      shift 2
+      ;;
+    --repo)
+      repo="${2:?}"
+      shift 2
+      ;;
+    --branch)
+      branch="${2:?}"
+      shift 2
+      ;;
+    --)
+      shift
+      ssh_flags+=("$@")
+      break
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ -z "$repo" ]]; then
+  repo="$(
+    gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true
+  )"
+fi
+
+if [[ -z "$repo" ]]; then
+  origin_url="$(git config --get remote.origin.url 2>/dev/null || true)"
+  repo="$(
+    printf '%s' "$origin_url" | sed -E \
+      -e 's#^git@github.com:##' \
+      -e 's#^https://github.com/##' \
+      -e 's#\.git$##'
+  )"
+fi
+
+if [[ -z "$repo" ]]; then
+  echo 'Could not determine repo (try: --repo owner/name)' >&2
+  exit 1
+fi
+
+if [[ -z "$branch" ]]; then
+  branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+fi
+
+sanitize_display_name() {
+  local s="$1"
+  s="${s//\//-}"
+  s="${s//:/-}"
+  s="$(printf '%s' "$s" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')"
+  if [[ -z "$s" ]]; then
+    s='codespace'
+  fi
+  printf '%s' "${s:0:48}"
+}
+
+if [[ -z "$display_name" ]]; then
+  display_name="${repo}-${branch}"
+fi
+
+display_name="$(sanitize_display_name "$display_name")"
+
+export GHCS_REPO="$repo"
+export GHCS_DISPLAY_NAME="$display_name"
+
+get_codespace_by_display_name() {
+  gh codespace list \
+    --json name,displayName,repository,lastUsedAt,createdAt \
+    --jq '
+      map(select(
+        ((.repository | if type == "object" then .nameWithOwner else . end) == env.GHCS_REPO) and
+        .displayName == env.GHCS_DISPLAY_NAME
+      ))
+      | sort_by(.lastUsedAt // .createdAt)
+      | reverse
+      | .[0].name // empty
+    '
+}
+
+get_latest_repo_codespace() {
+  gh codespace list \
+    --json name,repository,lastUsedAt,createdAt \
+    --jq '
+      map(select((.repository | if type == "object" then .nameWithOwner else . end) == env.GHCS_REPO))
+      | sort_by(.lastUsedAt // .createdAt)
+      | reverse
+      | .[0].name // empty
+    '
+}
+
+codespace_name=''
+if [[ "$resume" == '1' ]]; then
+  codespace_name="$(get_codespace_by_display_name | head -n1)"
+  if [[ -z "$codespace_name" ]]; then
+    codespace_name="$(get_latest_repo_codespace | head -n1)"
+  fi
+fi
+
+if [[ -n "$codespace_name" ]]; then
+  current_display_name="$(
+    gh codespace view -c "$codespace_name" --json displayName --jq .displayName
+  )"
+
+  if [[ "$current_display_name" != "$display_name" ]]; then
+    gh codespace edit -c "$codespace_name" -d "$display_name"
+  fi
+else
+  echo "Creating codespace: ${display_name} (${repo}@${branch})" >&2
+  gh codespace create \
+    --repo "$repo" \
+    --branch "$branch" \
+    --display-name "$display_name" \
+    --default-permissions
+
+  codespace_name=''
+  for _ in $(seq 1 60); do
+    codespace_name="$(get_codespace_by_display_name | head -n1)"
+    [[ -n "$codespace_name" ]] && break
+    sleep 2
+  done
+fi
+
+if [[ -z "$codespace_name" ]]; then
+  echo 'Failed to find codespace after creating it.' >&2
+  exit 1
+fi
+
+echo "Using codespace: ${codespace_name} (${display_name})" >&2
+
+if [[ "$action" == 'pause' ]]; then
+  gh codespace stop -c "$codespace_name" >/dev/null
+
+  deadline=$((SECONDS + 600))
+  while :; do
+    state="$(gh codespace view -c "$codespace_name" --json state --jq .state)"
+    [[ "$state" == 'Shutdown' ]] && break
+
+    if ((SECONDS > deadline)); then
+      echo "Timed out waiting for codespace to stop (state: $state)." >&2
+      exit 1
+    fi
+
+    echo "Stopping codespace (state: $state)..." >&2
+    sleep 5
+  done
+
+  echo 'Codespace stopped.' >&2
+  exit 0
+fi
+
+state="$(gh codespace view -c "$codespace_name" --json state --jq .state)"
+if [[ "$state" == 'Shutdown' ]]; then
+  gh codespace ssh -c "$codespace_name" -- exit >/dev/null 2>&1 || true
+fi
+
+deadline=$((SECONDS + 1800))
+while :; do
+  state="$(gh codespace view -c "$codespace_name" --json state --jq .state)"
+  [[ "$state" == 'Available' ]] && break
+
+  if ((SECONDS > deadline)); then
+    echo "Timed out waiting for codespace to be ready (state: $state)." >&2
+    exit 1
+  fi
+
+  echo "Waiting for codespace (state: $state)..." >&2
+  sleep 5
+done
+
+case "$connect_mode" in
+  code)
+    gh codespace code -c "$codespace_name"
+    ;;
+  ssh)
+    if ((${#ssh_flags[@]})); then
+      gh codespace ssh -c "$codespace_name" -- "${ssh_flags[@]}"
+    else
+      gh codespace ssh -c "$codespace_name"
+    fi
+    ;;
+  *)
+    echo "Unknown connect mode: $connect_mode" >&2
+    exit 2
+    ;;
+esac

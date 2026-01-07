@@ -478,7 +478,7 @@ in {
     pkgs.zellij
   ];
 
-  cachix.push = lib.mkIf isDev "c0decafe";
+  cachix.push = lib.mkIf (isDev && builtins.getEnv "CACHIX_AUTH_TOKEN" != "") "c0decafe";
   cachix.pull = ["c0decafe"];
 
   devcontainer.enable = false;
