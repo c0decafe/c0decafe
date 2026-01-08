@@ -477,7 +477,11 @@ in {
     pkgs.deadnix
     pkgs.devenv
     pkgs.gh
-    (pkgsUnstable.github-copilot-cli or pkgsUnstable.nodePackages."@github/copilot")
+    (
+      if pkgsUnstable ? "github-copilot-cli"
+      then pkgsUnstable."github-copilot-cli"
+      else pkgsUnstable.nodePackages."@github/copilot"
+    )
     pkgs.git
     pkgs.lua-language-server
     pkgs.nixd
