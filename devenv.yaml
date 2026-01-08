@@ -1,9 +1,11 @@
 # yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
 inputs:
   devenv:
-    url: github:cachix/devenv/2b1c4b5aa44b7d85f6a8575adf149516aaf78188
+    url: github:cachix/devenv/latest
   nixpkgs:
     url: github:NixOS/nixpkgs/117cc7f94e8072499b0a7aa4c52084fa4e11cc9b
+  nixpkgs-unstable:
+    url: github:NixOS/nixpkgs/nixpkgs-unstable
   nixvim:
     url: github:nix-community/nixvim/6094d2a4396c0ff4e94b22315cc43f55db626c32
     inputs:

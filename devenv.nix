@@ -9,6 +9,12 @@
   version = "0.1.0";
   isDev = !config.container.isBuilding;
 
+  system = pkgs.stdenv.hostPlatform.system;
+  pkgsUnstable = import inputs."nixpkgs-unstable" {
+    inherit system;
+    config.allowUnfree = true;
+  };
+
   # Configure nixvim with our custom config
   nixvim' = inputs.nixvim.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   nvim = nixvim'.makeNixvimWithModule {
@@ -454,6 +460,12 @@ in {
   overlays = [
     (_final: prev: {
       inherit (inputs.devenv.packages.${prev.stdenv.hostPlatform.system}) devenv;
+
+      # devenv's nixseparatedebuginfod module still references the old name.
+      nixseparatedebuginfod =
+        if prev ? nixseparatedebuginfod
+        then prev.nixseparatedebuginfod
+        else prev.nixseparatedebuginfod2;
     })
   ];
 
@@ -465,6 +477,7 @@ in {
     pkgs.deadnix
     pkgs.devenv
     pkgs.gh
+    (pkgsUnstable.github-copilot-cli or pkgsUnstable.nodePackages."@github/copilot")
     pkgs.git
     pkgs.lua-language-server
     pkgs.nixd
