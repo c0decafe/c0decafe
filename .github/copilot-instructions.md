@@ -18,7 +18,8 @@ Subdirectories can override behaviour with their own `AGENTS.md` files.
 ## Code changes
 
 - Read code before modifying it; avoid edits to unseen areas.
-- Keep diffs small and focused on the request; avoid reformatting, renames, or refactors beyond what’s needed.
+- Keep diffs small and focused on the request; avoid reformatting, renames, or
+  refactors beyond what’s needed.
 - Do not create commits or branches unless requested.
 - Remove unused code instead of leaving placeholders or `_unused` stubs.
 

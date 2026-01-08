@@ -43,6 +43,7 @@ This repo is meant to **bootstrap the dev setup for a devenv project**:
   - and drops you into the configured shell.
 
 For more on how `devenv` shells, tasks, and containers work, see:
+
 - Shells: <https://devenv.sh/reference/cli/#devenv-shell>
 - Tasks: <https://devenv.sh/reference/tasks/>
 - Containers: <https://devenv.sh/reference/containers/>

@@ -9,7 +9,7 @@
   version = "0.1.0";
   isDev = !config.container.isBuilding;
 
-  system = pkgs.stdenv.hostPlatform.system;
+  inherit (pkgs.stdenv.hostPlatform) system;
   pkgsUnstable = import inputs."nixpkgs-unstable" {
     inherit system;
     config.allowUnfree = true;
@@ -463,9 +463,7 @@ in {
 
       # devenv's nixseparatedebuginfod module still references the old name.
       nixseparatedebuginfod =
-        if prev ? nixseparatedebuginfod
-        then prev.nixseparatedebuginfod
-        else prev.nixseparatedebuginfod2;
+        prev.nixseparatedebuginfod or prev.nixseparatedebuginfod2;
     })
   ];
 
@@ -478,9 +476,8 @@ in {
     pkgs.devenv
     pkgs.gh
     (
-      if pkgsUnstable ? "github-copilot-cli"
-      then pkgsUnstable."github-copilot-cli"
-      else pkgsUnstable.nodePackages."@github/copilot"
+      pkgsUnstable."github-copilot-cli"
+      or pkgsUnstable.nodePackages."@github/copilot"
     )
     pkgs.git
     pkgs.lua-language-server
